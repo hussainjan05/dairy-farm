@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cow Farm Tracker Pro — Clean</title>
+
+  <!-- Bootstrap + icons + font -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#f5f7fb; --card:#fff; --text:#1f2937; --muted:#6c757d; --accent:#0d6efd;
+    }
+    [data-theme="dark"]{
+      --bg:#071028; --card:#071028; --text:#e6eef8; --muted:#9fb0c8; --accent:#66b0ff;
+    }
+    body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;background:var(--bg);color:var(--text);margin:0;padding:0;}
+    .auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,var(--card),var(--bg));padding:1rem}
+    .auth-card{background:var(--card);border-radius:12px;padding:1.5rem;max-width:440px;width:100%;box-shadow:0 6px 30px rgba(5,10,20,0.06)}
+    .btn-google{border-radius:999px;font-weight:600;padding:10px 16px}
+    .app-header{background:var(--card);padding:12px 16px;border-bottom:1px solid rgba(0,0,0,0.04);position:sticky;top:0;z-index:10}
+    .card-ghost{background:var(--card);border-radius:12px;padding:1rem;box-shadow:0 3px 18px rgba(10,20,40,0.04)}
+    footer{color:var(--muted);text-align:center;padding:16px}
+    .rounded-pill-sm{border-radius:999px;font-size:.85rem;padding:.35rem .9rem}
+    
+    /* Mobile-first responsive improvements */
+    @media (max-width: 575px) {
+      .desk-only{display:none}
+      .auth-card { padding: 1.25rem; }
+      .app-header { padding: 10px 12px; }
+      .app-header .d-flex { gap: 1rem !important; }
+      .app-header .d-flex > div:first-child { flex: 1; }
+      .card-ghost { padding: 0.75rem; }
+      .table-responsive { font-size: 0.875rem; }
+      .btn-group-sm .btn { padding: 0.25rem 0.5rem; }
+      .container { padding-left: 12px; padding-right: 12px; }
+      .row.g-3 { margin-left: -6px; margin-right: -6px; }
+      .row.g-3 > [class*="col-"] { padding-left: 6px; padding-right: 6px; }
+    }
+    
+    @media (min-width: 576px) and (max-width: 991px) {
+      .table-responsive { font-size: 0.9rem; }
+    }
+    
+    /* Improved table styling for mobile */
+    .table-responsive { max-height: 62vh; overflow: auto; }
+    .table th, .table td { white-space: nowrap; }
+    .table th { position: sticky; top: 0; background: var(--card); }
+    
+    /* Better form controls for mobile */
+    .form-control, .btn { min-height: 44px; } /* Better touch targets */
+    
+    /* Improved mobile navigation */
+    .mobile-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); 
+                 border-top: 1px solid rgba(0,0,0,0.1); padding: 8px 16px; z-index: 100; }
+    .mobile-nav .btn { flex: 1; }
+    
+    /* Better responsive grid */
+    @media (max-width: 991px) {
+      .col-lg-4, .col-lg-8 { margin-bottom: 1rem; }
+    }
+    
+    /* Better spacing for mobile */
+    .mb-mobile-3 { margin-bottom: 1rem; }
+    @media (max-width: 575px) {
+      .mb-mobile-3 { margin-bottom: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- AUTH SCREEN: shown when no user -->
+  <section id="authScreen" class="auth-screen">
+    <div class="auth-card text-center">
+      <div class="mb-3"><i class="bi bi-journal-richtext fs-1" style="color:var(--accent)"></i></div>
+      <h3 class="mb-1">Cow Farm Tracker Pro</h3>
+      <p class="text-muted mb-3">Sign in with Google to save your data securely.</p>
+
+      <div class="d-grid gap-2 mb-2">
+        <button id="googleSignIn" class="btn btn-google btn-outline-secondary d-flex align-items-center justify-content-center gap-2">
+          <i class="bi bi-google fs-5"></i> Continue with Google
+        </button>
+        <button id="guestBtn" class="btn btn-outline-primary">Continue as guest (local only)</button>
+      </div>
+
+      <p class="small text-muted mt-3">Note: Guest data stays on this device. For cloud sync, sign in with Google.</p>
+    </div>
+  </section>
+
+  <!-- MAIN APP: hidden until login/guest -->
+  <section id="appScreen" style="display:none">
+    <header class="app-header d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center gap-3">
+        <div style="width:44px;height:44px;display:grid;place-items:center;border-radius:8px;background:var(--card)">
+          <i class="bi bi-journal-richtext fs-4" style="color:var(--accent)"></i>
+        </div>
+        <div class="d-none d-sm-block">
+          <div style="font-weight:600">Cow Farm Tracker Pro</div>
+          <div class="small" style="color:var(--muted)">Cloud-synced records</div>
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center gap-2">
+        <button id="themeBtn" class="btn btn-light rounded-pill-sm"><i class="bi bi-moon"></i></button>
+        <div id="userInfo" class="text-end d-none d-sm-block" style="min-width:160px;">
+          <div id="userName" style="font-weight:600"></div>
+          <div id="userEmail" class="small" style="color:var(--muted)"></div>
+        </div>
+        <button id="logoutBtn" class="btn btn-outline-danger rounded-pill-sm"><i class="bi bi-box-arrow-right"></i> <span class="d-none d-sm-inline">Logout</span></button>
+      </div>
+    </header>
+
+    <main class="container py-3 py-md-4">
+      <div class="row g-3">
+        <div class="col-12 col-lg-4 mb-mobile-3">
+          <div class="card-ghost">
+            <h6 class="mb-2">Add / Edit Record</h6>
+            <form id="recordForm">
+              <input type="hidden" id="recordId">
+              <div class="mb-2">
+                <label class="form-label small-muted">Cow ID</label>
+                <input id="cowId" class="form-control" placeholder="e.g. Cow-01" required>
+              </div>
+
+              <div class="row g-2">
+                <div class="col-6">
+                  <label class="form-label small-muted">Morning (L)</label>
+                  <input type="number" step="0.01" id="morning" class="form-control" value="0">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small-muted">Evening (L)</label>
+                  <input type="number" step="0.01" id="evening" class="form-control" value="0">
+                </div>
+              </div>
+
+              <div class="row g-2 mt-2">
+                <div class="col-6">
+                  <label class="form-label small-muted">Feed (kg)</label>
+                  <input type="number" step="0.01" id="feed" class="form-control" value="0">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small-muted">Medicine/Other (₹)</label>
+                  <input type="number" step="0.01" id="cost" class="form-control" value="0">
+                </div>
+              </div>
+
+              <div class="mb-2 mt-2">
+                <label class="form-label small-muted">Notes</label>
+                <textarea id="notes" class="form-control" rows="2" placeholder="optional"></textarea>
+              </div>
+
+              <div class="d-grid mt-2">
+                <button class="btn btn-primary rounded-pill" id="saveBtn" type="submit">Save Record</button>
+              </div>
+              <div class="d-flex gap-2 mt-2">
+                <button id="resetBtn" type="button" class="btn btn-outline-secondary btn-sm">Reset</button>
+                <button id="exportCsv" type="button" class="btn btn-outline-success btn-sm ms-auto">Export CSV</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="col-12 col-lg-8">
+          <div class="card-ghost p-2 p-md-3">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <h6 class="mb-0">Records</h6>
+              <div class="small text-muted d-none d-md-block">Tap a row to edit • Use delete icon to remove</div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Cow</th>
+                    <th>Date</th>
+                    <th class="text-end desk-only">Morning</th>
+                    <th class="text-end desk-only">Evening</th>
+                    <th class="text-end">Total</th>
+                    <th class="text-end desk-only">Feed</th>
+                    <th class="text-end">Cost</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="recordsTable"></tbody>
+              </table>
+            </div>
+
+            <div class="mt-3 d-flex gap-2">
+              <button id="clearAll" class="btn btn-outline-danger btn-sm">Clear all</button>
+              <div class="ms-auto small text-muted" id="statusInfo"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav d-flex d-lg-none justify-content-between">
+      <button id="mobileAddBtn" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Add
+      </button>
+      <button id="mobileExportBtn" class="btn btn-outline-success">
+        <i class="bi bi-download"></i> Export
+      </button>
+      <button id="mobileResetBtn" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-clockwise"></i> Reset
+      </button>
+    </div>
+
+    <footer>Built with Firebase • Sign in with Google to sync data</footer>
+  </section>
+
+  <!-- FIREBASE MODULES -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import {
+      getFirestore, collection, addDoc, doc, updateDoc, deleteDoc,
+      onSnapshot, query, orderBy, getDocs, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // ---------- PASTE YOUR FIREBASE CONFIG HERE ----------
+     const firebaseConfig = {
+  apiKey: "AIzaSyDrgVuazNuCR4bHckiywL5MPqQ7yL0XPUc",
+  authDomain: "cow-traker.firebaseapp.com",
+  projectId: "cow-traker",
+  storageBucket: "cow-traker.firebasestorage.app",
+  messagingSenderId: "866920492567",
+  appId: "1:866920492567:web:3a57199bc6d2c9da657652"
+};
+
+    // init
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+    const db = getFirestore(app);
+
+    // DOM
+    const authScreen = document.getElementById('authScreen');
+    const appScreen = document.getElementById('appScreen');
+    const googleSignIn = document.getElementById('googleSignIn');
+    const guestBtn = document.getElementById('guestBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const userNameEl = document.getElementById('userName');
+    const userEmailEl = document.getElementById('userEmail');
+    const userInfo = document.getElementById('userInfo');
+    const themeBtn = document.getElementById('themeBtn');
+
+    const recordForm = document.getElementById('recordForm');
+    const recordIdEl = document.getElementById('recordId');
+    const resetBtn = document.getElementById('resetBtn');
+    const recordsTable = document.getElementById('recordsTable');
+    const exportCsvBtn = document.getElementById('exportCsv');
+    const clearAllBtn = document.getElementById('clearAll');
+    const statusInfo = document.getElementById('statusInfo');
+
+    // Mobile buttons
+    const mobileAddBtn = document.getElementById('mobileAddBtn');
+    const mobileExportBtn = document.getElementById('mobileExportBtn');
+    const mobileResetBtn = document.getElementById('mobileResetBtn');
+
+    // state
+    let currentUser = null;
+    let unsubscribe = null; // listener cleanup
+    let liveRows = []; // in-memory rows for guest or last snapshot
+
+    // Theme handling
+    function applyTheme(t){
+      if(t === 'dark') document.documentElement.setAttribute('data-theme','dark');
+      else document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('theme', t);
+      themeBtn.innerHTML = t === 'dark' ? '<i class="bi bi-sun"></i>' : '<i class="bi bi-moon"></i>';
+    }
+    themeBtn.addEventListener('click', ()=> applyTheme(localStorage.getItem('theme') === 'dark' ? 'light' : 'dark'));
+    applyTheme(localStorage.getItem('theme') || 'light');
+
+    // helper
+    const fmt = v => (typeof v === 'number') ? (Math.round(v*100)/100) : (v||'');
+    const escapeHtml = s => String(s||'').replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    // SAFE unsubscribe
+    function stopListener(){
+      if(typeof unsubscribe === 'function'){
+        try{ unsubscribe(); }catch(e){ /* ignore */ }
+        unsubscribe = null;
+      }
+    }
+
+    // show/hide screens
+    function showAuthScreen(){ 
+      authScreen.style.display = 'flex'; 
+      appScreen.style.display = 'none'; 
+      userInfo.style.display = 'none'; 
+      logoutBtn.style.display = 'none'; 
+      statusInfo.textContent = ''; 
+    }
+    
+    function showAppScreen(){ 
+      authScreen.style.display = 'none'; 
+      appScreen.style.display = 'block'; 
+      userInfo.style.display = 'block'; 
+      logoutBtn.style.display = 'inline-block'; 
+    }
+
+    // sign in with Google
+    googleSignIn.addEventListener('click', async ()=>{
+      try{
+        await signInWithPopup(auth, provider);
+      }catch(err){
+        console.error('SignIn error', err);
+        alert('Sign-in failed: ' + err.message);
+      }
+    });
+
+    // guest mode (local only)
+    guestBtn.addEventListener('click', ()=>{
+      currentUser = null;
+      stopListener();
+      showAppScreen();
+      userNameEl.textContent = 'Guest';
+      userEmailEl.textContent = '';
+      userInfo.style.display = 'block';
+      liveRows = JSON.parse(localStorage.getItem('guestRows') || '[]');
+      renderTable(liveRows);
+      statusInfo.textContent = 'Guest (local only)';
+    });
+
+    // logout
+    logoutBtn.addEventListener('click', async ()=>{
+      try{
+        await signOut(auth);
+        // onAuthStateChanged will handle UI & stopListener
+      }catch(e){ console.error('SignOut', e); }
+    });
+
+    // onAuth change
+    onAuthStateChanged(auth, user => {
+      // always stop existing listener first to prevent streaming issues
+      stopListener();
+
+      if(user){
+        currentUser = user;
+        userNameEl.textContent = user.displayName || (user.email||'').split('@')[0];
+        userEmailEl.textContent = user.email || '';
+        showAppScreen();
+        statusInfo.textContent = 'Signed in';
+        // start listening to user's records
+        listenUserRecords(user.uid);
+      } else {
+        // no user -> show login screen
+        currentUser = null;
+        showAuthScreen();
+      }
+    });
+
+    // listen user records safely
+    function listenUserRecords(uid){
+      stopListener(); // ensure no double listeners
+      try{
+        const userColl = collection(db, 'users', uid, 'milkRecords');
+        const q = query(userColl, orderBy('createdAt','desc'));
+        unsubscribe = onSnapshot(q, snap => {
+          const rows = [];
+          snap.forEach(d => rows.push({ id: d.id, ...d.data() }));
+          liveRows = rows;
+          renderTable(rows);
+        }, err => {
+          console.error('onSnapshot error', err);
+          statusInfo.textContent = 'Error listening to data: ' + (err.message || err.code);
+        });
+      }catch(e){
+        console.error('listen error', e);
+        statusInfo.textContent = 'Listen failed';
+      }
+    }
+
+    // add or update record
+    recordForm.addEventListener('submit', async (ev)=>{
+      ev.preventDefault();
+      const id = recordIdEl.value || null;
+      const data = {
+        cowId: document.getElementById('cowId').value.trim() || 'Unknown',
+        morning: parseFloat(document.getElementById('morning').value) || 0,
+        evening: parseFloat(document.getElementById('evening').value) || 0,
+        feed: parseFloat(document.getElementById('feed').value) || 0,
+        cost: parseFloat(document.getElementById('cost').value) || 0,
+        notes: document.getElementById('notes').value || '',
+        date: new Date().toISOString().slice(0,10)
+      };
+      data.total = (data.morning||0) + (data.evening||0);
+
+      if(currentUser && currentUser.uid){
+        // ensure we have a valid uid
+        try{
+          if(id){
+            await updateDoc(doc(db, 'users', currentUser.uid, 'milkRecords', id), { ...data, updatedAt: serverTimestamp() });
+            statusInfo.textContent = 'Record updated';
+          } else {
+            await addDoc(collection(db, 'users', currentUser.uid, 'milkRecords'), { ...data, createdAt: serverTimestamp() });
+            statusInfo.textContent = 'Record saved';
+          }
+        }catch(err){
+          console.error('save error', err);
+          alert('Save failed: ' + (err.message || err.code));
+        }
+      } else {
+        // guest mode: local-only
+        if(id){
+          liveRows = liveRows.map(r => r.id === id ? { ...r, ...data } : r);
+        } else {
+          const newId = 'g_' + Date.now();
+          liveRows.unshift({ id: newId, ...data });
+        }
+        localStorage.setItem('guestRows', JSON.stringify(liveRows));
+        renderTable(liveRows);
+        statusInfo.textContent = 'Guest record saved locally';
+      }
+
+      // reset form
+      recordForm.reset();
+      recordIdEl.value = '';
+    });
+
+    resetBtn.addEventListener('click', ()=> { recordForm.reset(); recordIdEl.value = ''; });
+    
+    // Mobile button handlers
+    mobileAddBtn.addEventListener('click', () => {
+      document.getElementById('saveBtn').click();
+    });
+    
+    mobileExportBtn.addEventListener('click', () => {
+      exportCsvBtn.click();
+    });
+    
+    mobileResetBtn.addEventListener('click', () => {
+      resetBtn.click();
+    });
+
+    // render table & attach buttons
+    function renderTable(rows){
+      recordsTable.innerHTML = '';
+      if(!rows || rows.length === 0){
+        recordsTable.innerHTML = '<tr><td colspan="8" class="text-center small text-muted">No records yet</td></tr>';
+        return;
+      }
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${escapeHtml(r.cowId)}</td>
+          <td>${r.date||''}</td>
+          <td class="text-end desk-only">${fmt(r.morning)}</td>
+          <td class="text-end desk-only">${fmt(r.evening)}</td>
+          <td class="text-end">${fmt(r.total)}</td>
+          <td class="text-end desk-only">${fmt(r.feed)}</td>
+          <td class="text-end">${fmt(r.cost)}</td>
+          <td class="text-end">
+            <div class="btn-group btn-group-sm" role="group">
+              <button class="btn btn-light" data-action="edit" data-id="${r.id}" title="Edit"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-light text-danger" data-action="delete" data-id="${r.id}" title="Delete"><i class="bi bi-trash"></i></button>
+            </div>
+          </td>`;
+        // click to select summary (optional)
+        tr.addEventListener('click', (e) => {
+          if(e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+          // select cow summary (not implemented in UI here)
+        });
+
+        // add event listeners for edit/delete
+        tr.querySelector('button[data-action="edit"]').addEventListener('click', (ev)=>{
+          ev.stopPropagation();
+          openEdit(r);
+        });
+        tr.querySelector('button[data-action="delete"]').addEventListener('click', async (ev)=>{
+          ev.stopPropagation();
+          await removeRecord(r.id);
+        });
+
+        recordsTable.appendChild(tr);
+      });
+    }
+
+    function openEdit(r){
+      if(!r) return;
+      recordIdEl.value = r.id || '';
+      document.getElementById('cowId').value = r.cowId || '';
+      document.getElementById('morning').value = r.morning || 0;
+      document.getElementById('evening').value = r.evening || 0;
+      document.getElementById('feed').value = r.feed || 0;
+      document.getElementById('cost').value = r.cost || 0;
+      document.getElementById('notes').value = r.notes || '';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // remove record safely
+    async function removeRecord(id){
+      if(!confirm('Delete this record?')) return;
+      if(currentUser && currentUser.uid){
+        try{
+          await deleteDoc(doc(db, 'users', currentUser.uid, 'milkRecords', id));
+          statusInfo.textContent = 'Record deleted';
+        }catch(err){
+          console.error('delete error', err);
+          alert('Delete failed: ' + (err.message || err.code));
+        }
+      } else {
+        liveRows = liveRows.filter(r => r.id !== id);
+        localStorage.setItem('guestRows', JSON.stringify(liveRows));
+        renderTable(liveRows);
+        statusInfo.textContent = 'Guest record removed';
+      }
+    }
+
+    // export CSV (current view)
+    exportCsvBtn.addEventListener('click', async ()=>{
+      let rows = liveRows;
+      if(currentUser && currentUser.uid){
+        try{
+          const snap = await getDocs(collection(db, 'users', currentUser.uid, 'milkRecords'));
+          rows = []; snap.forEach(d => rows.push({ id: d.id, ...d.data() }));
+        }catch(err){ console.error(err); alert('Export failed: '+err.message); return; }
+      }
+      if(!rows || rows.length === 0){ alert('No records to export'); return; }
+      const csvRows = [['id','cowId','date','morning','evening','total','feed','cost','notes']];
+      rows.forEach(r => csvRows.push([r.id||'', r.cowId||'', r.date||'', r.morning||0, r.evening||0, r.total||0, r.feed||0, r.cost||0, `"${(r.notes||'').replace(/"/g,'""')}"`]));
+      const csv = csvRows.map(r => r.join(',')).join('\n');
+      const blob = new Blob([csv], { type:'text/csv' }); const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'cow_records.csv'; a.click(); URL.revokeObjectURL(url);
+    });
+
+    // clear all (cloud or guest)
+    clearAllBtn.addEventListener('click', async ()=>{
+      if(!confirm('Clear ALL records? This cannot be undone.')) return;
+      if(currentUser && currentUser.uid){
+        try{
+          const snap = await getDocs(collection(db, 'users', currentUser.uid, 'milkRecords'));
+          const deletes = []; snap.forEach(s => deletes.push(deleteDoc(doc(db, 'users', currentUser.uid, 'milkRecords', s.id))));
+          await Promise.all(deletes);
+          statusInfo.textContent = 'All records cleared';
+        }catch(err){ console.error(err); alert('Clear failed: '+err.message); }
+      } else {
+        localStorage.removeItem('guestRows');
+        liveRows = [];
+        renderTable(liveRows);
+        statusInfo.textContent = 'Guest records cleared';
+      }
+    });
+
+    // small safety: prevent any writes if user is undefined (helps avoid unauthorized stream errors)
+    // All guarded above with (currentUser && currentUser.uid)
+
+  </script>
+</body>
+</html>
